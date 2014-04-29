@@ -1,5 +1,6 @@
 var app = {
   currentRoom: undefined, //initialize with no room
+  roomList: {all: true},
   init: function() {
     var queryString = window.location.search;
     var username = queryString.substring(queryString.indexOf("=") + 1);
@@ -38,6 +39,28 @@ var app = {
       }
     });
   },
+  refreshRooms: function() {
+    var data = {order: '-createdAt'};
+    $.ajax({
+      url: 'https://api.parse.com/1/classes/chatterbox',
+      type: 'GET',
+      contentType: 'application/json',
+      data: data,
+      success: function (data) {
+        var rooms = {};
+        for (var i = 0; i < data.results.length; i++) {
+          rooms[_.escape(data.results[i].roomname)] = true;
+        }
+
+        for (room in rooms) {
+          if (app.roomList[room] === undefined) {
+            app.roomList[room] = true;
+            $('#roomselect').append('<option value="' + room + '">' + room + '</option>');
+          }
+        }
+      }
+    });
+  },
   fetch: function(roomname) {
     var data = {order: '-createdAt'};
     if (roomname !== undefined && roomname !== 'all') {
@@ -72,9 +95,7 @@ var app = {
       }
     });
   },
-  refreshRooms: function() {
 
-  },
   _refreshInternal: function() {
     app.fetch(app.currentRoom);
     app.refreshRooms();
