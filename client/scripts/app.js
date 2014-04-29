@@ -1,10 +1,13 @@
 var app = {
   currentRoom: undefined, //initialize with no room
+  friends: {},
   roomList: {all: true},
   init: function() {
     var queryString = window.location.search;
     var username = queryString.substring(queryString.indexOf("=") + 1);
     this.refresh();
+
+    // send chat message to current room
     $('#input').on('submit', function(event) {
       event.preventDefault();
       var $message = $('#chat_message');
@@ -14,9 +17,11 @@ var app = {
         username: username,
         roomname: app.currentRoom === undefined || app.currentRoom === "all" ? "" : app.currentRoom
       });
-      $message.val("");
+      $message.val('');
       app.fetch();
     });
+
+    // add room (or just change if typed room already exists)
     $('#new_room').on('submit', function(event) {
       event.preventDefault();
       var newRoomName = $('#new_room_name').val();
@@ -30,68 +35,77 @@ var app = {
       $('#new_room_name').val('');
     });
 
+    // change rooms (user selects from dropdown)
     var $roomSelect = $('#roomselect');
     $roomSelect.on('change' , function(event) {
       event.preventDefault();
       app.currentRoom = $roomSelect.val();
     });
 
-  },
-  send: function(message) {
-    $.ajax({
-      url: 'https://api.parse.com/1/classes/chatterbox',
-      type: 'POST',
-      data: JSON.stringify(message),
-      contentType: 'application/json',
-      success: function (data) {
-        console.log('chatterbox: Message sent');
-      },
-      error: function (data) {
-        console.error('chatterbox: Failed to send message');
+    // click username to friend and highlight messages
+    $('#chats').on('click', '.username', function(event) {
+      event.preventDefault();
+      var friend = $(this).text();
+      if (app.friends[friend] === undefined) {
+        app.friends[friend] = true;
+      } else {
+        delete app.friends[friend];
       }
+      app.applyFriendsProperties();
     });
+
   },
+
+  makeAjaxCall: function(type, successCallBack, errorCallBack, data) {
+    var ajaxObject =  {
+      url : 'https://api.parse.com/1/classes/chatterbox',
+      contentType: 'application/json',
+      type: type
+    };
+    if (data !== undefined) {
+      ajaxObject["data"] = data;
+    }
+    if (successCallBack !== undefined) {
+      ajaxObject["success"] = successCallBack;
+    }
+    if (errorCallBack !== undefined) {
+      ajaxObject["error"] = errorCallBack;
+    }
+    $.ajax(ajaxObject);
+  },
+
+  send: function(message) {
+    var success = function() {console.log('chatterbox: Message sent');};
+    var error = function() {console.error('chatterbox: Failed to send message');};
+    app.makeAjaxCall('POST', success, error, JSON.stringify(message));
+  },
+
   refreshRooms: function() {
     var data = {order: '-createdAt'};
-    $.ajax({
-      url: 'https://api.parse.com/1/classes/chatterbox',
-      type: 'GET',
-      contentType: 'application/json',
-      data: data,
-      success: function (data) {
+    var success = function (data) {
         var rooms = {};
         for (var i = 0; i < data.results.length; i++) {
           rooms[_.escape(data.results[i].roomname)] = true;
         }
-
         for (room in rooms) {
           if (app.roomList[room] === undefined) {
             app.roomList[room] = true;
             $('#roomselect').append('<option value="' + room + '">' + room + '</option>');
           }
         }
-      }
-    });
+      };
+    app.makeAjaxCall('GET', success, undefined, data);
   },
   fetch: function(roomname) {
     var data = {order: '-createdAt'};
     if (roomname !== undefined && roomname !== 'all') {
       data.where = {roomname: roomname};
     }
-
-    $.ajax({
-      url: 'https://api.parse.com/1/classes/chatterbox',
-      type: 'GET',
-      contentType: 'application/json',
-      data: data,
-      success: function (data) {
-
-        $("#chats").empty();
+    var success = function (data) {
+        $('#chats').empty();
         var results = data.results.slice(0,5).reverse();
-
-        // <div class='updated_at'>" + _.escape(message.updatedAt) + "</div>\
         _.each(results, function(message) {
-          $("#chats").append(
+          $('#chats').append(
             "<div class='chat'>\
               <div class='username'>" + _.escape(message.username) + "</div>\
               <div class='updated_at'>" + _.escape(message.updatedAt) + "</div>\
@@ -99,11 +113,21 @@ var app = {
               <div class='message'>" + _.escape(message.text) + "</div>\
             </div>");
         });
-      },
-
-      error: function (data) {
-        // see: https://developer.mozilla.org/en-US/docs/Web/API/console.error
+      };
+    var error = function (data) {
         console.error('chatterbox: Failed to fetch messages');
+    };
+    app.makeAjaxCall('GET', success, error, data);
+  },
+
+  applyFriendsProperties: function() {
+    var $displayedChats = $('.chat');
+    $displayedChats.each(function(i, element) {
+      var $username = $(this).children('.username');
+      if (app.friends[$username.text()]) {
+        $(this).addClass('friend');
+      } else {
+        $(this).removeClass('friend');
       }
     });
   },
@@ -111,6 +135,7 @@ var app = {
   _refreshInternal: function() {
     app.fetch(app.currentRoom);
     app.refreshRooms();
+    app.applyFriendsProperties();
   },
   refresh: function() {
     app.fetch();

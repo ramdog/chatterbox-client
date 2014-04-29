@@ -94,3 +94,7 @@ form input[type=text] {
 #new_room {
     display: inline-block;
 }
+
+.friend {
+    background-color: red;
+}
