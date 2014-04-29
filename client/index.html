@@ -7,14 +7,28 @@
 
     <!-- dependencies -->
     <script src="bower_components/jquery/jquery.min.js"></script>
+    <script src="bower_components/underscore/underscore.js"></script>
     <!-- your scripts -->
     <script src="scripts/config.js"></script>
     <script src="scripts/app.js"></script>
+    <script>
+      $(document).ready(function() {
+        app.init();
+      });
+    </script>
   </head>
   <body>
     <div id="main">
       <h1>chatterbox</h1>
-      <!-- Your HTML goes here! -->
+      <select id="roomselect">
+        <option value="all" selected="selected">All</option>
+        <option value="lobby">Lobby</option>
+      </select>
+      <div id="chats"></div>
+      <form id="input">
+        <input id="chat_message" type="text" placeholder="Chat!" required>
+      </form>
     </div>
   </body>
 </html>
+
