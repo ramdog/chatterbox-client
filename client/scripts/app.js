@@ -17,6 +17,18 @@ var app = {
       $message.val("");
       app.fetch();
     });
+    $('#new_room').on('submit', function(event) {
+      event.preventDefault();
+      var newRoomName = $('#new_room_name').val();
+      if (app.roomList[newRoomName] === undefined) {
+        app.roomList[newRoomName] = newRoomName;
+        $('#roomselect').append('<option value="' + newRoomName + '">' + newRoomName + '</option>');
+      }
+      app.currentRoom = newRoomName;
+      app._refreshInternal();
+      $('#roomselect').val(newRoomName).trigger('change');
+      $('#new_room_name').val('');
+    });
 
     var $roomSelect = $('#roomselect');
     $roomSelect.on('change' , function(event) {
