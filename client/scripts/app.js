@@ -20,7 +20,7 @@ var app = {
         roomname: app.currentRoom === undefined || app.currentRoom === 'all' ? '' : app.currentRoom
       });
       $message.val('');
-      app.fetch();
+      app._refreshInternal();
     });
 
     // add room (or just change if typed room already exists)
@@ -42,6 +42,7 @@ var app = {
     $roomSelect.on('change' , function(event) {
       event.preventDefault();
       app.currentRoom = $roomSelect.val();
+      app._refreshInternal();
     });
 
     // click username to friend and highlight messages
@@ -106,8 +107,9 @@ var app = {
     var nbMsgNew = messages.length;
     var nbMsgToRemove = Math.max(nbMsgOnPage + nbMsgNew - app.messagesLimit, 0);
 
-    for (var i = 0; i < nbMsgToRemove; i++) {
-      $chats.children()[i].remove();
+    while(nbMsgToRemove){
+      $chats.find('.chat:first').remove();
+      --nbMsgToRemove;
     }
 
     _.each(messages, function(message) {
@@ -130,11 +132,10 @@ var app = {
       data.where['createdAt'] = {"$gt": {"__type":"Date", "iso":app.lastMessage}};
     }
     var success = function (data) {
-      app.renderMessage(data.results);
-      app.lastMessage = _.last(data.results).createdAt;
+      app.renderMessage(data.results.reverse());
     };
     var error = function (data) {
-        console.error('chatterbox: Failed to fetch messages');
+        console.error('chatterbox: Failed to fetch messages ' + data.responseText);
     };
     app.makeAjaxCall('GET', success, error, data);
   },
@@ -157,8 +158,8 @@ var app = {
     app.applyFriendsProperties();
   },
   refresh: function() {
-    app.fetch();
-    setInterval(app._refreshInternal, 1000);
+    app._refreshInternal();
+    setInterval(app._refreshInternal, 3000);
   }
 };
 
@@ -169,4 +170,10 @@ roomname: "lobby"
 text: "hello"
 updatedAt: "2013-10-07T16:22:03.280Z"
 username: "gary"
+ */
+
+/**
+ *"{"code":102,"error":"find field {\"$gt\"=>{\"__type\"=>\"Date\", \"iso\"=>\"2014-04-30T01:47:13.550Z\"}} has invalid type ActiveSupport::HashWithIndifferentAccess"}"
+ *
+ *
  */
