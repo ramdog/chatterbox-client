@@ -1,10 +1,12 @@
 var app = {
   currentRoom: undefined, //initialize with no room
   friends: {},
+  messagesLimit: 5,
   roomList: {all: true},
+  lastMessage: undefined,
   init: function() {
     var queryString = window.location.search;
-    var username = queryString.substring(queryString.indexOf("=") + 1);
+    var username = queryString.substring(queryString.indexOf('=') + 1);
     this.refresh();
 
     // send chat message to current room
@@ -15,7 +17,7 @@ var app = {
       app.send({
         text: $message.val(),
         username: username,
-        roomname: app.currentRoom === undefined || app.currentRoom === "all" ? "" : app.currentRoom
+        roomname: app.currentRoom === undefined || app.currentRoom === 'all' ? '' : app.currentRoom
       });
       $message.val('');
       app.fetch();
@@ -63,13 +65,13 @@ var app = {
       type: type
     };
     if (data !== undefined) {
-      ajaxObject["data"] = data;
+      ajaxObject['data'] = data;
     }
     if (successCallBack !== undefined) {
-      ajaxObject["success"] = successCallBack;
+      ajaxObject['success'] = successCallBack;
     }
     if (errorCallBack !== undefined) {
-      ajaxObject["error"] = errorCallBack;
+      ajaxObject['error'] = errorCallBack;
     }
     $.ajax(ajaxObject);
   },
@@ -96,24 +98,41 @@ var app = {
       };
     app.makeAjaxCall('GET', success, undefined, data);
   },
+
+  renderMessage: function(messages) {
+    var $chats = $('#chats');
+
+    var nbMsgOnPage = $chats.children().length;
+    var nbMsgNew = messages.length;
+    var nbMsgToRemove = Math.max(nbMsgOnPage + nbMsgNew - app.messagesLimit, 0);
+
+    for (var i = 0; i < nbMsgToRemove; i++) {
+      $chats.children()[i].remove();
+    }
+
+    _.each(messages, function(message) {
+      $('#chats').append(
+        "<div class='chat'>\
+          <div class='username'>" + _.escape(message.username) + "</div>\
+          <div class='updated_at'>" + _.escape(message.updatedAt) + "</div>\
+          <div class='roomname'>" + _.escape(message.roomname) + "</div>\
+          <div class='message'>" + _.escape(message.text) + "</div>\
+        </div>");
+    });
+  },
+
   fetch: function(roomname) {
-    var data = {order: '-createdAt'};
+    var data = {order: '-createdAt', limit: app.messagesLimit, where: {}};
     if (roomname !== undefined && roomname !== 'all') {
-      data.where = {roomname: roomname};
+      data.where['roomname'] = roomname;
+    }
+    if (app.lastMessage !== undefined) {
+      data.where['createdAt'] = {"$gt": {"__type":"Date", "iso":app.lastMessage}};
     }
     var success = function (data) {
-        $('#chats').empty();
-        var results = data.results.slice(0,5).reverse();
-        _.each(results, function(message) {
-          $('#chats').append(
-            "<div class='chat'>\
-              <div class='username'>" + _.escape(message.username) + "</div>\
-              <div class='updated_at'>" + _.escape(message.updatedAt) + "</div>\
-              <div class='roomname'>" + _.escape(message.roomname) + "</div>\
-              <div class='message'>" + _.escape(message.text) + "</div>\
-            </div>");
-        });
-      };
+      app.renderMessage(data.results);
+      app.lastMessage = _.last(data.results).createdAt;
+    };
     var error = function (data) {
         console.error('chatterbox: Failed to fetch messages');
     };
